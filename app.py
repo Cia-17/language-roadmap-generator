@@ -1,152 +1,238 @@
-
 import streamlit as st
 import openai
 import os
 from datetime import datetime
 
-# Page configuration
-st.set_page_config(
-    page_title="Language Learning Roadmap Generator",
-    page_icon="🗺️",
-    layout="wide"
-)
-
-# Initialize OpenAI
-openai.api_key = st.secrets["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"]
-
-# App header
-st.title("🗺️ AI Language Learning Roadmap Generator")
-st.markdown("### Get a personalized learning path with free resources!")
-
-# Sidebar for inputs
-with st.sidebar:
-    st.header("📝 Your Learning Preferences")
+# ==============================
+# SECURE API KEY MANAGEMENT
+# ==============================
+def initialize_openai():
+    """
+    Safely initialize OpenAI API key from multiple sources
+    Priority: Streamlit Secrets > Environment Variable > Demo Mode
+    """
+    api_key = None
     
-    language = st.selectbox(
-        "Select Language to Learn:",
-        ["Spanish", "French", "German", "Japanese", "Chinese", 
-         "Korean", "Italian", "Portuguese", "Arabic", "Russian",
-         "Other (specify below)"]
+    # Try to get key from Streamlit Secrets
+    try:
+        if "OPENAI_API_KEY" in st.secrets:
+            api_key = st.secrets["OPENAI_API_KEY"]
+    except:
+        pass
+    
+    # Try environment variable
+    if not api_key:
+        api_key = os.environ.get("OPENAI_API_KEY")
+    
+    # Set the API key if we have it
+    if api_key and api_key.startswith("sk-"):
+        openai.api_key = api_key
+        return True  # AI mode enabled
+    else:
+        # Demo mode - no valid key
+        return False  # Demo mode
+
+# ==============================
+# DEMO MODE FUNCTIONS
+# ==============================
+def generate_demo_roadmap(language, level, goal, weeks, hours_per_week):
+    """Generate a demo roadmap when API key is not available"""
+    return f"""
+# 🌍 {language} Learning Roadmap ({weeks} weeks)
+
+## 🎯 Your Learning Profile
+- **Current Level**: {level}
+- **Primary Goal**: {goal}
+- **Time Commitment**: {weeks} weeks × {hours_per_week} hours/week = {weeks*hours_per_week} total hours
+- **Target**: {goal.lower()} proficiency in {language}
+
+## 📋 Overview
+This personalized roadmap structures free resources to maximize your learning efficiency. 
+Each week builds upon the previous, with practical exercises to reinforce skills.
+
+## 📅 Weekly Breakdown
+
+### Week 1: Foundation & Basics
+**Learning Objectives:**
+1. Master basic greetings and introductions
+2. Learn the {language} alphabet and pronunciation rules
+3. Build a 50-word vocabulary foundation
+4. Practice simple sentence structures
+
+**Free Resources:**
+- 📺 **YouTube**: Search "Learn {language} for absolute beginners"
+- 🌐 **Websites**: Duolingo ({language} course) - Complete Units 1-3
+- 📱 **Apps**: HelloTalk (language exchange)
+
+**Practice Exercises:**
+1. Record yourself introducing yourself in {language}
+2. Label 10 items in your home with {language} words
+
+**Weekend Project:** Create a 1-minute self-introduction video
+
+---
+
+### Week 2: Daily Conversations
+**Learning Objectives:**
+1. Learn common phrases for shopping, dining, and directions
+2. Practice present tense conjugations
+3. Build vocabulary to 150 words
+
+**Free Resources:**
+- 📺 **YouTube**: "{language} daily conversations" playlists
+- 🌐 **Websites**: BBC Languages ({language} section)
+
+**Weekend Project:** Have a 5-minute conversation with a language partner
+
+---
+
+### Weeks 3-{weeks}: Progressive Mastery
+*(Add OpenAI API key to Streamlit Secrets for complete AI-generated roadmap)*
+
+## 🔑 Enable AI Generation
+For personalized AI recommendations with specific YouTube links and websites:
+
+1. **Get API Key**: Visit platform.openai.com
+2. **Add to Streamlit Cloud**: Deploy this app and add your key to Secrets
+3. **Regenerate**: Click the generate button
+
+---
+*This demo shows the structure. Add API key for AI-powered personalized roadmap.*
+"""
+
+# ==============================
+# MAIN APP
+# ==============================
+def main():
+    # Page configuration
+    st.set_page_config(
+        page_title="Language Learning Roadmap Generator",
+        page_icon="🗺️",
+        layout="wide"
     )
     
-    if language == "Other (specify below)":
-        language = st.text_input("Enter language:")
+    # Initialize OpenAI (returns True if AI mode, False if demo)
+    ai_enabled = initialize_openai()
     
-    level = st.select_slider(
-        "Your Current Level:",
-        options=["Complete Beginner", "Basic Knowledge", "Intermediate", "Advanced Beginner"]
-    )
+    # App header
+    st.title("🗺️ Language Learning Roadmap Generator")
+    st.markdown("### Get a personalized learning path with free resources!")
     
-    goal = st.selectbox(
-        "Learning Goal:",
-        ["Travel Conversations", "Business Communication", "Academic Study", "Casual Fluency"]
-    )
+    # API Key status indicator
+    with st.sidebar:
+        st.header("🔧 Configuration")
+        if ai_enabled:
+            st.success("✅ AI Mode Active")
+            st.info("Using secure API key from Streamlit Secrets")
+        else:
+            st.warning("🔒 Demo Mode")
+            st.markdown("""
+            **To enable AI:**
+            1. Get OpenAI key
+            2. Add to Streamlit Secrets
+            3. Redeploy app
+            """)
     
-    weeks = st.slider("Weeks to Complete:", 4, 52, 12)
+    # Sidebar for inputs
+    with st.sidebar:
+        st.header("📝 Your Preferences")
+        
+        language = st.selectbox(
+            "Language to Learn:",
+            ["Spanish", "French", "German", "Japanese", "Chinese", 
+             "Korean", "Italian", "Portuguese", "Arabic", "Russian",
+             "Other"]
+        )
+        
+        if language == "Other":
+            language = st.text_input("Enter language:")
+        
+        level = st.select_slider(
+            "Your Level:",
+            options=["Beginner", "Basic", "Intermediate"]
+        )
+        
+        goal = st.selectbox(
+            "Goal:",
+            ["Travel", "Business", "Academic", "Casual"]
+        )
+        
+        weeks = st.slider("Weeks:", 4, 24, 8)
+        
+        hours_per_week = st.slider("Hours/Week:", 1, 10, 3)
+        
+        generate_button = st.button("🚀 Generate Roadmap", type="primary")
     
-    hours_per_week = st.slider("Hours per Week:", 1, 20, 5)
+    # Main content area
+    if generate_button and language:
+        if ai_enabled:
+            # AI MODE - Real OpenAI API call
+            with st.spinner("🤖 AI is generating your roadmap..."):
+                try:
+                    prompt = f"Create a {weeks}-week roadmap for learning {language} for {goal}. Level: {level}. Hours/week: {hours_per_week}. Include specific free YouTube channels, websites, and practice exercises. Format clearly with weekly breakdowns."
+                    
+                    response = openai.ChatCompletion.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "Create structured language learning roadmaps with free resources."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.7,
+                        max_tokens=1500
+                    )
+                    
+                    roadmap = response.choices[0].message.content
+                    st.success("✅ AI Roadmap Generated!")
+                    
+                except Exception as e:
+                    st.error(f"API Error. Using demo mode.")
+                    roadmap = generate_demo_roadmap(language, level, goal, weeks, hours_per_week)
+        else:
+            # DEMO MODE
+            roadmap = generate_demo_roadmap(language, level, goal, weeks, hours_per_week)
+            st.info("Showing demo. Add API key for AI generation.")
+        
+        # Display roadmap
+        st.markdown(roadmap)
+        
+        # Download option
+        st.download_button(
+            label="📥 Download",
+            data=roadmap,
+            file_name=f"{language}_roadmap.md",
+            mime="text/markdown"
+        )
     
-    generate_button = st.button("🚀 Generate My Roadmap", type="primary", use_container_width=True)
+    elif generate_button and not language:
+        st.warning("Please select a language.")
+    
+    else:
+        # Default view
+        st.markdown("""
+        ## Welcome! 🌍
+        
+        This tool creates **personalized language learning roadmaps**.
+        
+        ### How it works:
+        1. Select your language and level
+        2. Choose your goal and timeline
+        3. Click "Generate Roadmap"
+        4. Follow the weekly plan
+        
+        ### Features:
+        ✅ Weekly structured plans  
+        ✅ Free YouTube resources  
+        ✅ Recommended websites  
+        ✅ Practice exercises  
+        ✅ Time management guidance  
+        
+        *Add OpenAI API key for AI-powered personalization*
+        """)
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("Built for Buildathon | Secure API Management")
 
-# Main content area
-if generate_button and language:
-    with st.spinner("🤖 AI is crafting your personalized learning roadmap..."):
-        try:
-            # Create the prompt for OpenAI
-            prompt = f'''
-            Create a comprehensive {weeks}-week learning roadmap for a {level} learner wanting to learn {language} for {goal}.
-            
-            Total available time: {hours_per_week} hours per week.
-            
-            Format the response as follows:
-            
-            ## {language} Learning Roadmap ({weeks} weeks)
-            
-            ### Weekly Structure:
-            
-            Then create {weeks} sections, each titled "Week X: [Topic]"
-            
-            For each week, include:
-            1. **Learning Objectives**: 3-4 specific goals
-            2. **YouTube Resources**: 2-3 specific YouTube channels or video series with links
-            3. **Websites/Articles**: 2-3 free websites with specific page recommendations
-            4. **Practice Exercises**: 2-3 practical activities
-            5. **Time Allocation**: How to split the {hours_per_week} hours
-            6. **Weekend Project**: A small project to apply learning
-            
-            End with:
-            ### 📚 Additional Free Resources
-            ### 🎯 Final Assessment
-            ### ✅ Next Steps After {weeks} Weeks
-            
-            Make it practical, motivational, and focused on FREE resources only.
-            '''
-            
-            # Call OpenAI API
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are an expert language learning coach who specializes in creating structured learning paths using free online resources."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                max_tokens=1500
-            )
-            
-            # Display the roadmap
-            roadmap = response.choices[0].message.content
-            
-            st.success("✅ Your personalized roadmap is ready!")
-            
-            # Display roadmap
-            st.markdown(roadmap)
-            
-            # Download option
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{language.lower().replace(' ', '_')}_roadmap_{timestamp}.md"
-            
-            st.download_button(
-                label="📥 Download Roadmap",
-                data=roadmap,
-                file_name=filename,
-                mime="text/markdown"
-            )
-            
-        except Exception as e:
-            st.error(f"Error generating roadmap: {str(e)}")
-            st.info("Please check your OpenAI API key and try again.")
-
-elif generate_button and not language:
-    st.warning("⚠️ Please select or enter a language to learn.")
-
-else:
-    # Default view before generation
-    st.markdown('''
-    ## Welcome to Your AI Language Learning Assistant! 🌍
-    
-    This tool creates a personalized learning roadmap using **100% free resources** from:
-    
-    - 📺 **YouTube** videos and channels
-    - 🌐 **Websites** and articles
-    - 📱 **Mobile apps** with free tiers
-    - 💬 **Practice communities**
-    
-    ### How it works:
-    1. **Select your language** and current level
-    2. **Choose your goal** (travel, business, etc.)
-    3. **Set your timeline** (weeks and hours per week)
-    4. **Click "Generate My Roadmap"**
-    
-    ### You'll receive:
-    ✅ Weekly learning objectives  
-    ✅ Curated YouTube resources with links  
-    ✅ Recommended websites and articles  
-    ✅ Practice exercises and projects  
-    ✅ Time management guidance  
-    
-    *Powered by AI and curated free resources*
-    ''')
-
-# Footer
-st.markdown("---")
-st.markdown("Built with ❤️ for the Buildathon | Uses OpenAI GPT-3.5 | All resources are free")
+# Run the app
+if __name__ == "__main__":
+    main()
